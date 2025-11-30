@@ -82,9 +82,9 @@ const App: React.FC = () => {
                 showToast('ОШИБКА АВТОРИЗАЦИИ');
             }
 
-            // 2. Load Top Tracks from Hitmo (empty query = top tracks)
+            // 2. Load Top Tracks from Hitmo
             try {
-                const topTracks = await api.searchTracks('', 1, 20); // Empty query loads top tracks
+                const topTracks = await api.searchTracks('top', 1, 20); // 'top' query for popular tracks
                 setTracks(topTracks);
                 if (topTracks.length > 0) {
                     setCurrentTrack(topTracks[0]);
@@ -142,7 +142,7 @@ const App: React.FC = () => {
             }, 1000);
         } else if (searchTerm.length === 0) {
             // Load top tracks back if search cleared
-            api.searchTracks('', 1, 20).then(setTracks).catch(console.error);
+            api.searchTracks('top', 1, 20).then(setTracks).catch(console.error);
         }
     }, [searchTerm]);
 
