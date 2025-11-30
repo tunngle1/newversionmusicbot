@@ -14,10 +14,7 @@ import { PlayerProvider, usePlayer } from './context/PlayerContext';
 import { initTelegramWebApp } from './utils/telegram';
 
 // --- DATA ---
-// MOCK_TRACKS removed in favor of API
-const MOCK_TRACKS: Track[] = [];
-
-const MOCK_LYRICS = "Это просто текст песни.\nСлучайный набор слов.\nВ стиле брутализм.\n\nЧерное на белом.\nБелое на черном.\nРитм. Бит. Бас.\n\nПовторить.\nПовторить.\nЕще раз.";
+// All data loaded from API
 
 type TabId = 'home' | 'playlists' | 'favorites' | 'radio' | 'library';
 type MenuView = 'main' | 'subscription' | 'referrals' | 'admin';
@@ -35,22 +32,22 @@ const App: React.FC = () => {
     const [searchFilter, setSearchFilter] = useState<SearchFilter>('all');
     const [activeTab, setActiveTab] = useState<TabId>('home');
     const [selectedGenre, setSelectedGenre] = useState<string | null>(null);
+    const [genreTracks, setGenreTracks] = useState<Track[]>([]);
     const [user, setUser] = useState<User | null>(null);
     const audioRef = useRef<HTMLAudioElement>(null);
 
     // Library State
     const [youtubeLink, setYoutubeLink] = useState('');
     const [isDownloadingYT, setIsDownloadingYT] = useState(false);
-    const [libraryTracks, setLibraryTracks] = useState<Track[]>([
-        { id: 'loc1', title: 'Voice Message', artist: 'Saved', duration: 45, coverUrl: 'https://picsum.photos/300/300?random=99', genre: 'Voice', url: '' }
-    ]);
-    const [downloadedIds, setDownloadedIds] = useState<Set<string>>(new Set(['loc1']));
+    const [libraryTracks, setLibraryTracks] = useState<Track[]>([]);
+    const [downloadedIds, setDownloadedIds] = useState<Set<string>>(new Set());
     const [toastMessage, setToastMessage] = useState<string | null>(null);
 
     // Playlist State
     const [playlists, setPlaylists] = useState<Playlist[]>([]);
     const [isCreatingPlaylist, setIsCreatingPlaylist] = useState(false);
     const [newPlaylistTitle, setNewPlaylistTitle] = useState('');
+    const [newPlaylistCover, setNewPlaylistCover] = useState<string>('');
     const [playlistSelectionTrackId, setPlaylistSelectionTrackId] = useState<string | null>(null);
 
     // Menu State
@@ -87,15 +84,22 @@ const App: React.FC = () => {
                 showToast('ОШИБКА АВТОРИЗАЦИИ');
             }
 
-            // 2. Load Radio/Popular
+            // 2. Load Popular Tracks (from search)
             try {
-                const stations = await api.getRadioStations();
-                setTracks(stations);
-                if (stations.length > 0) {
-                    setCurrentTrack(stations[0]);
+                const popularTracks = await api.searchTracks('popular', 1, 20);
+                setTracks(popularTracks);
+                if (popularTracks.length > 0) {
+                    setCurrentTrack(popularTracks[0]);
                 }
             } catch (e) {
-                console.error('Failed to load radio', e);
+                console.error('Failed to load popular tracks', e);
+                // Fallback: try loading any tracks
+                try {
+                    const anyTracks = await api.searchTracks('music', 1, 20);
+                    setTracks(anyTracks);
+                } catch (e2) {
+                    console.error('Failed to load any tracks', e2);
+                }
             }
         };
         init();
@@ -146,10 +150,23 @@ const App: React.FC = () => {
                 }
             }, 1000);
         } else if (searchTerm.length === 0) {
-            // Load radio back if search cleared
-            api.getRadioStations().then(setTracks).catch(console.error);
+            // Load popular tracks back if search cleared
+            api.searchTracks('popular', 1, 20)
+                .then(setTracks)
+                .catch(() => api.searchTracks('music', 1, 20).then(setTracks));
         }
     }, [searchTerm]);
+
+    // --- GENRE LOADING ---
+    useEffect(() => {
+        if (selectedGenre) {
+            api.searchTracks(selectedGenre, 1, 50)
+                .then(setGenreTracks)
+                .catch(() => setGenreTracks([]));
+        } else {
+            setGenreTracks([]);
+        }
+    }, [selectedGenre]);
 
     const showToast = (msg: string) => {
         setToastMessage(msg);
@@ -201,6 +218,7 @@ const App: React.FC = () => {
         setCurrentTrack(track);
         setIsPlaying(true);
     };
+
 
     const handleYoutubeDownload = () => {
         if (!youtubeLink) return;
@@ -834,7 +852,6 @@ const App: React.FC = () => {
 
         // Genre View
         if (selectedGenre) {
-            const genreTracks = tracks.filter(t => t.genre === selectedGenre);
             return (
                 <div className="flex flex-col h-full animate-in slide-in-from-right duration-300">
                     <button
