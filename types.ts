@@ -6,11 +6,24 @@ export interface Track {
   coverUrl: string; // Mapped from 'image'
   url: string;
   genre?: string;
+  isLocal?: boolean;
 }
+
+export interface RadioStation {
+  id: string;
+  name: string;
+  genre: string;
+  url: string;
+  image: string;
+}
+
+export type RepeatMode = 'none' | 'all' | 'one';
+export type SearchMode = 'all' | 'artist' | 'track';
 
 export interface Playlist {
   id: string;
   title: string;
+  name?: string; // Alias for title to support oldfront logic if needed
   coverUrl: string;
   trackIds: string[];
 }

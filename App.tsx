@@ -10,6 +10,8 @@ import {
 import { Visualizer } from './components/Visualizer';
 import { api } from './services/api';
 import { User } from './types';
+import { PlayerProvider, usePlayer } from './context/PlayerContext';
+import { initTelegramWebApp } from './utils/telegram';
 
 // --- DATA ---
 // MOCK_TRACKS removed in favor of API
@@ -1188,4 +1190,16 @@ const App: React.FC = () => {
     );
 };
 
-export default App;
+const AppWithProvider: React.FC = () => {
+    useEffect(() => {
+        initTelegramWebApp();
+    }, []);
+
+    return (
+        <PlayerProvider>
+            <App />
+        </PlayerProvider>
+    );
+};
+
+export default AppWithProvider;

@@ -1,0 +1,5 @@
+{
+  "name": "TG Music Player",
+  "description": "Современный музыкальный плеер с поддержкой плейлистов и загрузкой треков.",
+  "requestFramePermissions": []
+}
