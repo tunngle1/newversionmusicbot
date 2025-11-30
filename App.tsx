@@ -10,8 +10,7 @@ import {
 import { Visualizer } from './components/Visualizer';
 import { api } from './services/api';
 import { User } from './types';
-import { PlayerProvider, usePlayer } from './context/PlayerContext';
-import { initTelegramWebApp } from './utils/telegram';
+
 
 // --- DATA ---
 // All data loaded from API
@@ -32,7 +31,6 @@ const App: React.FC = () => {
     const [searchFilter, setSearchFilter] = useState<SearchFilter>('all');
     const [activeTab, setActiveTab] = useState<TabId>('home');
     const [selectedGenre, setSelectedGenre] = useState<string | null>(null);
-    const [genreTracks, setGenreTracks] = useState<Track[]>([]);
     const [user, setUser] = useState<User | null>(null);
     const audioRef = useRef<HTMLAudioElement>(null);
 
@@ -84,22 +82,15 @@ const App: React.FC = () => {
                 showToast('ОШИБКА АВТОРИЗАЦИИ');
             }
 
-            // 2. Load Popular Tracks (from search)
+            // 2. Load Top Tracks from Hitmo (empty query = top tracks)
             try {
-                const popularTracks = await api.searchTracks('popular', 1, 20);
-                setTracks(popularTracks);
-                if (popularTracks.length > 0) {
-                    setCurrentTrack(popularTracks[0]);
+                const topTracks = await api.searchTracks('', 1, 20); // Empty query loads top tracks
+                setTracks(topTracks);
+                if (topTracks.length > 0) {
+                    setCurrentTrack(topTracks[0]);
                 }
             } catch (e) {
-                console.error('Failed to load popular tracks', e);
-                // Fallback: try loading any tracks
-                try {
-                    const anyTracks = await api.searchTracks('music', 1, 20);
-                    setTracks(anyTracks);
-                } catch (e2) {
-                    console.error('Failed to load any tracks', e2);
-                }
+                console.error('Failed to load top tracks', e);
             }
         };
         init();
@@ -150,23 +141,10 @@ const App: React.FC = () => {
                 }
             }, 1000);
         } else if (searchTerm.length === 0) {
-            // Load popular tracks back if search cleared
-            api.searchTracks('popular', 1, 20)
-                .then(setTracks)
-                .catch(() => api.searchTracks('music', 1, 20).then(setTracks));
+            // Load top tracks back if search cleared
+            api.searchTracks('', 1, 20).then(setTracks).catch(console.error);
         }
     }, [searchTerm]);
-
-    // --- GENRE LOADING ---
-    useEffect(() => {
-        if (selectedGenre) {
-            api.searchTracks(selectedGenre, 1, 50)
-                .then(setGenreTracks)
-                .catch(() => setGenreTracks([]));
-        } else {
-            setGenreTracks([]);
-        }
-    }, [selectedGenre]);
 
     const showToast = (msg: string) => {
         setToastMessage(msg);
@@ -852,6 +830,7 @@ const App: React.FC = () => {
 
         // Genre View
         if (selectedGenre) {
+            const genreTracks = tracks.filter(t => t.genre === selectedGenre);
             return (
                 <div className="flex flex-col h-full animate-in slide-in-from-right duration-300">
                     <button
@@ -1207,16 +1186,4 @@ const App: React.FC = () => {
     );
 };
 
-const AppWithProvider: React.FC = () => {
-    useEffect(() => {
-        initTelegramWebApp();
-    }, []);
-
-    return (
-        <PlayerProvider>
-            <App />
-        </PlayerProvider>
-    );
-};
-
-export default AppWithProvider;
+export default App;
